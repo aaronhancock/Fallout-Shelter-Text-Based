@@ -1,11 +1,7 @@
 """General functions used by most modules in this project."""
 
 from time import sleep
-
-load = False  # Enables/disables loading screens.
-if load:
-    from tqdm import tqdm
-
+from config import LOAD_DELAY
 
 def input_int(s):
     """Allow user to input integers while catching errors.
@@ -20,7 +16,7 @@ def input_int(s):
         try:
             x = int(input(s))
             break
-        except:
+        except ValueError:
             print_line("Invalid. Only integer numbers are accepted!")
     return x
 
@@ -34,10 +30,7 @@ def print_line(*messages, fast=True):
     for message in messages:
         message = str(message)
         for line in message.splitlines():
-            if fast:
-                sleep(0.1)  # Only used while game is in development.
-            else:
-                sleep(0.5)  # Normal value used.
+            sleep(LOAD_DELAY if fast else 0.5)
             print(line)
 
 
@@ -48,21 +41,18 @@ def load_time(x, message):
     x -- length of loading bar in seconds
     message -- message to print before loading bar
     """
-    if load:
-        print_line(str(message))
-        for x in tqdm(range(0, x)):
-            sleep(0.01)
-    else:
-        print(str(message))
-        sleep(x / 10000)
+    print(str(message))
+    sleep(x / 10000)
 
 
-def count_item(item, target_inventory):
+def count_item(item, target_inventory, inventory, trader_inventory):
     """Count total number of specified item in inventory.
 
     Arguments:
     item -- item to count
     target_inventory -- inventory to count in
+    inventory -- player's inventory
+    trader_inventory -- trader's inventory
 
     Returns:
     int -- count of item in inventory
@@ -73,4 +63,5 @@ def count_item(item, target_inventory):
     elif target_inventory == "trader":
         return trader_inventory.count(item)
     else:
-        print_line("Bug with item counting system. Please contact dev!")
+        print_line("Unknown inventory type.")
+        return 0

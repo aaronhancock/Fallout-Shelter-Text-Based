@@ -4,7 +4,7 @@ from general_funcs import print_line
 from Item import Item
 
 
-class Room(object):  # Basic class for the rooms in the game.
+class Room(object):
     """Room class."""
 
     def __init__(self, name, player):
@@ -12,65 +12,70 @@ class Room(object):  # Basic class for the rooms in the game.
 
         Arguments:
         name -- name of room
-        player -- ???
+        player -- player object
         """
         self.name = name
-        self.assigned = ''  # should be a list
-
-        # Determines the production level, max assigned limit etc.
+        self.assigned = ''
         self.level = 1
-        self.risk = False  # Risk of breaking down, when rushed.
+        self.risk = False
         self.broken = False
-        # 'On' if there is enough power for the room, 'Off' otherwise.
         self.power_available = "On"
-        # Living rooms have no "assigned". Number of living rooms just limits
-        # the total population of the shelter.
-        if self.name == "living":
-            # Stores whether or not room actually produces anything.
-            # self.components=["wood",] #Need to add components.
-            self.can_produce = False
-            self.assigned_limit = 0
-            self.components = ["wood", "wood", "wood", "wood"]
-            self.power_usage = 5
-        elif self.name == "generator":
-            self.risk = 2
-            self.can_produce = True
-            self.components = ["steel", "steel", "steel", "steel"]
-            # Max number of workers that can work in the room at one time.
-            self.assigned_limit = 3
-            self.power_usage = 0
-        elif self.name == "storage":
-            self.can_produce = False
-            self.assigned_limit = 0
-            self.components = ["steel", "steel"]
-            self.power_usage = 1
-        elif self.name == "kitchen":
-            self.risk = 1
-            self.can_produce = True
-            self.assigned_limit = 3
-            self.components = ["wood", "wood", "wood"]
-            self.power_usage = 10
-        elif self.name == "trader":
-            self.can_produce = False
-            self.assigned_limit = 1
-            self.components = ["wood", "wood", "steel", "steel", "wood"]
-            self.power_usage = 2
-        elif self.name == "water works":
-            self.risk = 2
-            self.can_produce = True
-            self.assigned_limit = 3
-            self.components = ["wood", "wood", "steel"]
-            self.power_usage = 10
-        elif self.name == "radio":
-            self.can_produce = False
-            self.assigned_limit = 2
-            self.components = ["wood", "wood", "steel", "steel", "wood"]
-            self.power_usage = 15
-        # Need to add more names.
+        self.can_produce = False
+        self.assigned_limit = 0
+        self.power_usage = 0
+        self.components = []
+
+        room_config = {
+            "living": {
+                "components": ["wood", "wood", "wood", "wood"],
+                "power_usage": 5
+            },
+            "generator": {
+                "risk": 2,
+                "can_produce": True,
+                "components": ["steel", "steel", "steel", "steel"],
+                "assigned_limit": 3
+            },
+            "storage": {
+                "components": ["steel", "steel"],
+                "power_usage": 1
+            },
+            "kitchen": {
+                "risk": 1,
+                "can_produce": True,
+                "assigned_limit": 3,
+                "components": ["wood", "wood", "wood"],
+                "power_usage": 10
+            },
+            "trader": {
+                "assigned_limit": 1,
+                "components": ["wood", "wood", "steel", "steel", "wood"],
+                "power_usage": 2
+            },
+            "water works": {
+                "risk": 2,
+                "can_produce": True,
+                "assigned_limit": 3,
+                "components": ["wood", "wood", "steel"],
+                "power_usage": 10
+            },
+            "radio": {
+                "assigned_limit": 2,
+                "components": ["wood", "wood", "steel", "steel", "wood"],
+                "power_usage": 15
+            }
+        }
+
+        if self.name in room_config:
+            config = room_config[self.name]
+            self.risk = config.get("risk", False)
+            self.can_produce = config.get("can_produce", False)
+            self.components = config.get("components", [])
+            self.assigned_limit = config.get("assigned_limit", 0)
+            self.power_usage = config.get("power_usage", 0)
         else:
-            print_line(
-                "Bug with room creation system.",
-                "Please contact dev. Class specific bug.")
+            print_line("Unknown room type. Please check the configuration.")
+
         if self.can_produce:
             self.production = 0
             self.can_rush = True
@@ -88,76 +93,81 @@ class Room(object):  # Basic class for the rooms in the game.
 
     def rush(self):
         """Rush building of Room."""
-        global rooms
-        self.rushed = 1  # Lets game know this room has been rushed.
+        self.rushed = True
         self.risk += 5
         print_line(self.name, " has been rushed!")
 
     def fix(self):
         """Repair room if damaged."""
-        global rooms
+        pass
 
-    def update_production(self, player):
+    def update_production(self, player, people):
         """Calculate production value of Room.
 
         Arguments:
         player -- player object
+        people -- list of all people in the game
         """
         if self.broken:
             production = 0
             print_line(self.name, "is broken and needs to be fixed.")
         else:
             production = 0
-            if self.name == "generator":
-                for person_index in str(self.assigned):
-                    if person_index == '1':
-                        production += people[int(person_index)].strength * 10
-                if player.electrician > 0:
-                    production = production * (1 + (player.electrician * 0.05))
-            elif self.name == "kitchen":
-                for person_index in str(self.assigned):
-                    if person_index == '1':
-                        production += people[int(person_index)].intelligence \
-                            * 10
-                if player.cooking > 0:
-                    production = production * \
-                        (1 + (player.cooking * 0.05))
+            production_config = {
+                "generator": {
+                    "attribute": "strength",
+                    "base_value": 10,
+                    "player_bonus": player.electrician,
+                    "bonus_multiplier": 0.05
+                },
+                "kitchen": {
+                    "attribute": "intelligence",
+                    "base_value": 10,
+                    "player_bonus": player.cooking,
+                    "bonus_multiplier": 0.05
+                },
+                "water works": {
+                    "attribute": "perception",
+                    "base_value": 10,
+                    "player_bonus": player.cooking,
+                    "bonus_multiplier": 0.05
+                },
+                "radio": {
+                    "attribute": "charisma",
+                    "base_value": 10,
+                    "player_bonus": player.inspiration,
+                    "bonus_multiplier": 0.05
+                }
+            }
 
-            elif self.name == "water works":
+            if self.name in production_config:
+                config = production_config[self.name]
                 for person_index in str(self.assigned):
                     if person_index == '1':
-                        production += people[int(person_index)].perception * 10
-                if player.cooking > 0:
-                    production = production * \
-                        (1 + (player.cooking * 0.05))
-            elif self.name == "radio":
-                for person_index in str(self.assigned):
-                    if person_index == '1':
-                        production += people[int(person_index)].charisma * 10
-                if player.inspiration > 0:
-                    production = production * \
-                        (1 + (player.inspiration * 0.05))
+                        attribute_value = getattr(people[int(person_index)], config["attribute"])
+                        production += attribute_value * config["base_value"]
+                if config["player_bonus"] > 0:
+                    production *= 1 + (config["player_bonus"] * config["bonus_multiplier"])
             else:
-                print_line(
-                    "Bug with room production update system.",
-                    "Please contact dev.")
+                print_line("Unknown room type for production calculation.")
+
             if player.inspiration > 0:
-                production = production * \
-                    (1 + (player.inspiration * 0.03))
+                production *= 1 + (player.inspiration * 0.03)
             if self.can_rush and self.rushed:
-                production = production * 2
-            return production
+                production *= 2
+
+        return production
 
     def count_assigned(self):
         """Count inhabitants assigned to Room."""
-        count = 0
-        for x in str(self.assigned):
-            if x == '1':
-                count += 1
-        return count
+        return str(self.assigned).count('1')
 
-    def see_assigned(self):
-        """Print names of inhabitants assigned to Room."""
+    def see_assigned(self, people):
+        """Print names of inhabitants assigned to Room.
+
+        Arguments:
+        people -- list of all people in the game
+        """
         count = 0
         for x in str(self.assigned):
             if x == '1':
@@ -178,5 +188,5 @@ class Room(object):  # Basic class for the rooms in the game.
 
     def use_power(self):
         """Consume player's power."""
-        for x in range(0, self.power_usage):
+        for _ in range(self.power_usage):
             Item('watt').destroy("player")

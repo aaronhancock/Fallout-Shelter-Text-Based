@@ -1,7 +1,9 @@
 """Module containing all Item classes."""
 
+from random import randint
 from general_funcs import print_line
 import json
+from config import ITEMS_FILE
 
 
 class Item(object):
@@ -13,21 +15,17 @@ class Item(object):
         Arguments:
         name -- name of item
         """
-        # Just needs to get the name, all other attributes are automatically
-        # assigned by the following lines.
         self.name = name
-        with open('items.json') as f:
-            parsed = json.loads(f.read())
-            try:
-                item = parsed[self.name]
+        with open(ITEMS_FILE) as f:
+            parsed = json.load(f)
+            item = parsed.get(self.name)
+            if item:
                 self.value = item['value']
                 self.weight = item['weight']
                 self.components = item['components']
                 self.rarity = item['rarity']
-            except KeyError:
-                print_line(
-                    "Unknown item. This is a bug. Please contact the dev.")
-        # Keeps track of whether item has been scrapped by player.
+            else:
+                print_line("Unknown item. This is a bug. Please contact the dev.")
         self.scrapped = False
 
     def count_component(self, component):
@@ -41,19 +39,17 @@ class Item(object):
     def scrap(self):
         """Destroy Item and add its components to inventory."""
         global inventory
-        print_line(self.name, " has been scrapped and these")
+        print_line(f"{self.name} has been scrapped and these components have been added to your inventory:")
         for item in self.components:
             inventory.append(item)
             print_line(item)
-        print_line("have been added to your inventory")
 
         chance = randint(0, 101)
-        if (people[0].scrapper) * 3 > chance:
-            print_line(
-                "Your scrapper skill has allowed you to gain more components!")
+        if people[0].scrapper * 3 > chance:
+            print_line("Your scrapper skill has allowed you to gain more components!")
             for item in self.components:
                 inventory.append(item)
-        self.scrapped = True  # whether item is scrapped or just destroyed
+        self.scrapped = True
         self.destroy("player")
 
     def destroy(self, target_inventory):
@@ -63,16 +59,8 @@ class Item(object):
         target_inventory -- inventory to remove Item from
         """
         global inventory
+        global trader_inventory
         if target_inventory == "player":
-            for x in range(len(inventory)):
-                if Item(inventory[x]).name == self.name:
-                    inventory.remove(inventory[x])
-                    break
+            inventory = [x for x in inventory if Item(x).name != self.name]
         elif target_inventory == "trader":
-            global trader_inventory
-            for x in range(len(trader_inventory)):
-                if Item(trader_inventory[x]).name == self.name:
-                    trader_inventory.remove(trader_inventory[x])
-                    break
-    #    if self.scrapped!=1:
-    #        print_line(self.name," has been used!")
+            trader_inventory = [x for x in trader_inventory if Item(x).name != self.name]
